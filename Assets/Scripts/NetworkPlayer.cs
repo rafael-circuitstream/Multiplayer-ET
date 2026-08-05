@@ -1,5 +1,6 @@
 using UnityEngine;
 using Unity.Netcode;
+using Unity.Collections;
 
 public class NetworkPlayer : NetworkBehaviour
 {
@@ -8,8 +9,21 @@ public class NetworkPlayer : NetworkBehaviour
     [SerializeField] private float rotationSpeed;
 
     [SerializeField] private NetworkObject projectilePrefab;
-    
-    // Update is called once per frame
+    [SerializeField] private Transform weaponTip;
+
+    private UIChat chatSystem;
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        chatSystem = FindAnyObjectByType<UIChat>();
+
+        if (IsOwner && IsLocalPlayer)
+        {       
+            chatSystem.OnMessageSent += SendChatMessageRPC;
+        }
+    }
+
     void Update()
     {
         if(IsOwner && IsLocalPlayer)
@@ -23,9 +37,28 @@ public class NetworkPlayer : NetworkBehaviour
 
             if(Input.GetKeyDown(KeyCode.Space))
             {
-                Instantiate(projectilePrefab, transform.position + Vector3.up, transform.rotation).Spawn();
+                SpawnProjectileRPC();
             }
         }
+
+    }
+
+    [Rpc(SendTo.Server)]
+    public void SpawnProjectileRPC()
+    {
+        NetworkObject clonedProjectile = Instantiate(projectilePrefab, weaponTip.position, weaponTip.rotation);
+        clonedProjectile.Spawn();
+            
+    }
+
+
+    [Rpc(SendTo.Everyone)]
+    public void SendChatMessageRPC(FixedString128Bytes messageReceived)
+    {
+        Debug.Log(":)");
+        Debug.Log(messageReceived);
+
+        chatSystem.DisplayMessageReceived(messageReceived);
 
     }
 }
